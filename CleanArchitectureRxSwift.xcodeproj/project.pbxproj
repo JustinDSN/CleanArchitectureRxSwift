@@ -624,7 +624,7 @@
 		25897B291E58BF0D00D3563C /* Domain */ = {
 			isa = PBXGroup;
 			children = (
-				25897BC21E58C42D00D3563C /* Entries */,
+				25897BC21E58C42D00D3563C /* Entities */,
 				25897BBE1E58C42D00D3563C /* UseCases */,
 				25897B2A1E58BF0D00D3563C /* Domain.h */,
 				25897B2B1E58BF0D00D3563C /* Info.plist */,
@@ -785,7 +785,7 @@
 			path = UseCases;
 			sourceTree = "<group>";
 		};
-		25897BC21E58C42D00D3563C /* Entries */ = {
+		25897BC21E58C42D00D3563C /* Entities */ = {
 			isa = PBXGroup;
 			children = (
 				BD107F811E72C5640043D900 /* Address.swift */,
@@ -798,7 +798,7 @@
 				BD107F7C1E72B7750043D900 /* Todo.swift */,
 				BD107F7E1E72B7820043D900 /* User.swift */,
 			);
-			path = Entries;
+			path = Entities;
 			sourceTree = "<group>";
 		};
 		25897BE11E58CB8E00D3563C /* Application */ = {
