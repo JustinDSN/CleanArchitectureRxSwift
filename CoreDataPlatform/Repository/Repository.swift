@@ -21,7 +21,7 @@ final class Repository<T: CoreDataRepresentable>: AbstractRepository where T == 
     }
 
     func query(with predicate: NSPredicate? = nil,
-                        sortDescriptors: [NSSortDescriptor]? = nil) -> Observable<[T]> {
+               sortDescriptors: [NSSortDescriptor]? = nil) -> Observable<[T]> {
         let request = T.CoreDataType.fetchRequest()
         request.predicate = predicate
         request.sortDescriptors = sortDescriptors

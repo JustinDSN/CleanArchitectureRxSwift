@@ -11,7 +11,7 @@ enum TestError: Error {
 
 class PostsViewModelTests: XCTestCase {
 
-  var allPostUseCase: PostsUseCaseMock!
+  var listPostsUseCase: ListPostsUseCaseMock!
   var postsNavigator: PostNavigatorMock!
   var viewModel: PostsViewModel!
 
@@ -20,10 +20,10 @@ class PostsViewModelTests: XCTestCase {
   override func setUp() {
     super.setUp()
 
-    allPostUseCase = PostsUseCaseMock()
+    listPostsUseCase = ListPostsUseCaseMock()
     postsNavigator = PostNavigatorMock()
 
-    viewModel = PostsViewModel(useCase: allPostUseCase,
+    viewModel = PostsViewModel(listPostsUseCase: listPostsUseCase,
                                navigator: postsNavigator)
   }
 
@@ -38,7 +38,7 @@ class PostsViewModelTests: XCTestCase {
     trigger.onNext(())
 
     // assert
-    XCTAssert(allPostUseCase.posts_Called)
+    XCTAssert(listPostsUseCase.posts_Called)
   }
 
 
@@ -65,7 +65,7 @@ class PostsViewModelTests: XCTestCase {
     // arrange
     let trigger = PublishSubject<Void>()
     let output = viewModel.transform(input: createInput(trigger: trigger))
-    allPostUseCase.posts_ReturnValue = Observable.error(TestError.test)
+    listPostsUseCase.posts_ReturnValue = Observable.error(TestError.test)
 
     // act
     output.posts.drive().disposed(by: disposeBag)
@@ -81,7 +81,7 @@ class PostsViewModelTests: XCTestCase {
     // arrange
     let trigger = PublishSubject<Void>()
     let output = viewModel.transform(input: createInput(trigger: trigger))
-    allPostUseCase.posts_ReturnValue = Observable.just(createPosts())
+    listPostsUseCase.posts_ReturnValue = Observable.just(createPosts())
 
     // act
     output.posts.drive().disposed(by: disposeBag)
@@ -97,7 +97,7 @@ class PostsViewModelTests: XCTestCase {
     let select = PublishSubject<IndexPath>()
     let output = viewModel.transform(input: createInput(selection: select))
     let posts = createPosts()
-    allPostUseCase.posts_ReturnValue = Observable.just(posts)
+    listPostsUseCase.posts_ReturnValue = Observable.just(posts)
 
     // act
     output.posts.drive().disposed(by: disposeBag)
@@ -114,7 +114,7 @@ class PostsViewModelTests: XCTestCase {
     let create = PublishSubject<Void>()
     let output = viewModel.transform(input: createInput(createPostTrigger: create))
     let posts = createPosts()
-    allPostUseCase.posts_ReturnValue = Observable.just(posts)
+    listPostsUseCase.posts_ReturnValue = Observable.just(posts)
 
     // act
     output.posts.drive().disposed(by: disposeBag)

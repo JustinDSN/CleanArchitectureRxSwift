@@ -4,12 +4,17 @@ import RxCocoa
 
 final class EditPostViewModel: ViewModelType {
     private let post: Post
-    private let useCase: PostsUseCase
+    private let savePostUseCase: SavePostUseCase
+    private let deletePostUseCase: DeletePostUseCase
     private let navigator: EditPostNavigator
 
-    init(post: Post, useCase: PostsUseCase, navigator: EditPostNavigator) {
+    init(post: Post,
+         savePostUseCase: SavePostUseCase,
+         deletePostUuseCase: DeletePostUseCase,
+         navigator: EditPostNavigator) {
         self.post = post
-        self.useCase = useCase
+        self.savePostUseCase = savePostUseCase
+        self.deletePostUseCase = deletePostUuseCase
         self.navigator = navigator
     }
 
@@ -31,14 +36,14 @@ final class EditPostViewModel: ViewModelType {
         }
         let savePost = saveTrigger.withLatestFrom(post)
                 .flatMapLatest { post in
-                    return self.useCase.save(post: post)
+                    return self.savePostUseCase.save(post: post)
                             .trackError(errorTracker)
                             .asDriverOnErrorJustComplete()
                 }
 
         let deletePost = input.deleteTrigger.withLatestFrom(post)
             .flatMapLatest { post in
-                return self.useCase.delete(post: post)
+                return self.deletePostUseCase.delete(post: post)
                     .trackError(errorTracker)
                     .asDriverOnErrorJustComplete()
             }.do(onNext: {

@@ -10,27 +10,33 @@ protocol PostsNavigator {
 class DefaultPostsNavigator: PostsNavigator {
     private let storyBoard: UIStoryboard
     private let navigationController: UINavigationController
-    private let services: UseCaseProvider
+    private let savePostUseCase: SavePostUseCase
+    private let deletePostUseCase: DeletePostUseCase
+    private let listPostsUseCase: ListPostsUseCase
 
-    init(services: UseCaseProvider,
+    init(savePostUseCase: SavePostUseCase,
+         deletePostUseCase: DeletePostUseCase,
+         listPostsUseCase: ListPostsUseCase,
          navigationController: UINavigationController,
          storyBoard: UIStoryboard) {
-        self.services = services
+        self.savePostUseCase = savePostUseCase
+        self.deletePostUseCase = deletePostUseCase
+        self.listPostsUseCase = listPostsUseCase
         self.navigationController = navigationController
         self.storyBoard = storyBoard
     }
     
     func toPosts() {
         let vc = storyBoard.instantiateViewController(ofType: PostsViewController.self)
-        vc.viewModel = PostsViewModel(useCase: services.makePostsUseCase(),
+        vc.viewModel = PostsViewModel(listPostsUseCase: listPostsUseCase,
                                       navigator: self)
         navigationController.pushViewController(vc, animated: true)
     }
 
     func toCreatePost() {
         let navigator = DefaultCreatePostNavigator(navigationController: navigationController)
-        let viewModel = CreatePostViewModel(createPostUseCase: services.makePostsUseCase(),
-                navigator: navigator)
+        let viewModel = CreatePostViewModel(savePostUseCase: savePostUseCase,
+                                            navigator: navigator)
         let vc = storyBoard.instantiateViewController(ofType: CreatePostViewController.self)
         vc.viewModel = viewModel
         let nc = UINavigationController(rootViewController: vc)
@@ -39,7 +45,10 @@ class DefaultPostsNavigator: PostsNavigator {
 
     func toPost(_ post: Post) {
         let navigator = DefaultEditPostNavigator(navigationController: navigationController)
-        let viewModel = EditPostViewModel(post: post, useCase: services.makePostsUseCase(), navigator: navigator)
+        let viewModel = EditPostViewModel(post: post,
+                                          savePostUseCase: savePostUseCase,
+                                          deletePostUuseCase: deletePostUseCase,
+                                          navigator: navigator)
         let vc = storyBoard.instantiateViewController(ofType: EditPostViewController.self)
         vc.viewModel = viewModel
         navigationController.pushViewController(vc, animated: true)

@@ -10,11 +10,11 @@ import RxCocoa
 import Domain
 
 final class CreatePostViewModel: ViewModelType {
-    private let createPostUseCase: PostsUseCase
+    private let savePostUseCase: SavePostUseCase
     private let navigator: CreatePostNavigator
 
-    init(createPostUseCase: PostsUseCase, navigator: CreatePostNavigator) {
-        self.createPostUseCase = createPostUseCase
+    init(savePostUseCase: SavePostUseCase, navigator: CreatePostNavigator) {
+        self.savePostUseCase = savePostUseCase
         self.navigator = navigator
     }
 
@@ -31,7 +31,7 @@ final class CreatePostViewModel: ViewModelType {
                     return Post(body: content, title: title)
                 }
                 .flatMapLatest { [unowned self] in
-                    return self.createPostUseCase.save(post: $0)
+                    return self.savePostUseCase.save(post: $0)
                             .trackActivity(activityIndicator)
                             .asDriverOnErrorJustComplete()
                 }

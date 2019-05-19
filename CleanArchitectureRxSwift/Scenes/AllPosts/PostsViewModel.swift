@@ -18,11 +18,11 @@ final class PostsViewModel: ViewModelType {
         let error: Driver<Error>
     }
 
-    private let useCase: PostsUseCase
+    private let listPostsUseCase: ListPostsUseCase
     private let navigator: PostsNavigator
     
-    init(useCase: PostsUseCase, navigator: PostsNavigator) {
-        self.useCase = useCase
+    init(listPostsUseCase: ListPostsUseCase, navigator: PostsNavigator) {
+        self.listPostsUseCase = listPostsUseCase
         self.navigator = navigator
     }
     
@@ -30,7 +30,7 @@ final class PostsViewModel: ViewModelType {
         let activityIndicator = ActivityIndicator()
         let errorTracker = ErrorTracker()
         let posts = input.trigger.flatMapLatest {
-            return self.useCase.posts()
+            return self.listPostsUseCase.posts()
                 .trackActivity(activityIndicator)
                 .trackError(errorTracker)
                 .asDriverOnErrorJustComplete()

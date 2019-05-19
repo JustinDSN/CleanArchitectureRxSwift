@@ -2,7 +2,7 @@ import Foundation
 import Domain
 import RxSwift
 
-final class PostsUseCase<Cache>: Domain.PostsUseCase where Cache: AbstractCache, Cache.T == Post {
+final class PostRepository<Cache> where Cache: AbstractCache, Cache.T == Post {
     private let network: PostsNetwork
     private let cache: Cache
 
@@ -20,10 +20,10 @@ final class PostsUseCase<Cache>: Domain.PostsUseCase where Cache: AbstractCache,
                     .map(to: [Post].self)
                     .concat(Observable.just($0))
             }
-        
+
         return fetchPosts.concat(stored)
     }
-    
+
     func save(post: Post) -> Observable<Void> {
         return network.createPost(post: post)
             .map { _ in }
