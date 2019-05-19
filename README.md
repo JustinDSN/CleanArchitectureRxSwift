@@ -19,15 +19,19 @@ pod install
 
 #### Domain 
 
+The `Domain` is basically what is your App about and what it can do.  It contains:
+* **[Entities](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html#entities)** - Which are the business objects of the application.  They can ecapsulate _enterprise wide_ business rules independent of any application.  
+* **[Use cases](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html#use-cases)** - Which are the application specific business rules.  They collaborate with to fetch, save, delete entites from an abstract interface that hides data persistence and data fetching implementation details.
+* **Entity Gateways** - Abstractions of the implementation details of *networking* or *persistence*.  The concrete implementation of an *entity gateway* can be swapped out at anytime and the use case should work the same.  Example entity gateways are included in the Platform layer.  
 
-The `Domain` is basically what is your App about and what it can do (Entities, UseCase etc.) **It does not depend on UIKit or any persistence framework**, and it doesn't have implementations apart from entities
+**It does not depend on UIKit or any persistence framework**
 
 #### Platform
 
-The `Platform` is a concrete implementation of the `Domain` in a specific platform like iOS. It does hide all implementation details. For example Database implementation whether it is CoreData, Realm, SQLite etc.
+The `Platform` contains concrete implementation of  `Domain` `EntityGateways`. It hides all implementation details. For example database implementation whether it is CoreData, Realm, SQLite etc.  There is also an example of a network based  `EntityGateway`.
 
 #### Application
-`Application` is responsible for delivering information to the user and handling user input. It can be implemented with any delivery pattern e.g (MVVM, MVC, MVP). This is the place for your `UIView`s and `UIViewController`s. As you will see from the example app, `ViewControllers` are completely independent of the `Platform`.  The only responsibility of a view controller is to "bind" the UI to the Domain to make things happen. In fact, in the current example we are using the same view controller for Realm and CoreData.
+`Application` is responsible for delivering information to the user and handling user input. It can be implemented with any delivery pattern e.g (MVVM, MVC, MVP). This is the place for your `UIView`s and `UIViewController`s. As you will see from the example app, `ViewControllers` are completely independent of the `Platform`.  The only responsibility of a view controller is to "bind" the UI to the Domain to make things happen. In fact, in the current example we are using the same view controller for Realm, CoreData, and Network.
 
 
 ## Detail overview
@@ -53,14 +57,26 @@ UseCases are protocols which do one specific thing:
 
 ```swift
 
-public protocol PostsUseCase {
-    func posts() -> Observable<[Post]>
+public protocol SavePostUseCase {
     func save(post: Post) -> Observable<Void>
 }
-
 ```
 
-`UseCaseProvider` is a [service locator](https://en.wikipedia.org/wiki/Service_locator_pattern).  In the current example, it helps to hide the concrete implementation of use cases.
+UseCases also have concrete implementation which accept an abstract `EntityGateway`, this allows them to collaborate with *any* type of persistance framework or network while owning *use case* or *application specific* business rules:
+
+```swift
+public final class ConcreteSavePostUseCase: SavePostUseCase {
+    private let entityGateway: PostsEntityGateway
+
+    public init(entityGateway: PostsEntityGateway) {
+        self.entityGateway = entityGateway
+    }
+
+    public func save(post: Post) -> Observable<Void> {
+        return entityGateway.save(entity: post  )
+    }
+}
+```
 
 #### Platform
 
@@ -82,31 +98,36 @@ final class RMPost: Object {
     dynamic var title: String = ""
     dynamic var content: String = ""
 }
-
 ```
 
 
-The `Platform` also contains concrete implementations of your use cases, repositories or any services that are defined in the `Domain`.
+The `Platform` also contains concrete implementations of your `EntityGateways`, repositories or any services that are defined in the `Domain`.
 
 ```swift
-final class PostsUseCase: Domain.PostsUseCase {
-    
-    private let repository: AbstractRepository<Post>
+public final class PostsEntityGateway: Domain.PostsEntityGateway {
+    private let coreDataStack = CoreDataStack()
+    private let postRepository: Repository<Post>
 
-    init(repository: AbstractRepository<Post>) {
-        self.repository = repository
+    public init() {
+        postRepository = Repository<Post>(context: coreDataStack.context)
     }
 
-    func posts() -> Observable<[Post]> {
-        return repository.query(sortDescriptors: [Post.CoreDataType.uid.descending()])
+    public func query() -> Observable<[Post]> {
+        return postRepository.query(with: nil,
+                                    sortDescriptors: [Post.CoreDataType.createdAt.descending()])
     }
-    
-    func save(post: Post) -> Observable<Void> {
-        return repository.save(entity: post)
+
+    public func save(entity: Post) -> Observable<Void> {
+        return postRepository.save(entity: entity)
     }
+
+    public func delete(entity: Post) -> Observable<Void> {
+        return postRepository.delete(entity: entity)
+    }
+
 }
 
-final class Repository<T: CoreDataRepresentable>: AbstractRepository<T> where T == T.CoreDataType.DomainType {
+final class Repository<T: CoreDataRepresentable>: AbstractRepository where T == T.CoreDataType.DomainType {
     private let context: NSManagedObjectContext
     private let scheduler: ContextScheduler
 
@@ -115,38 +136,28 @@ final class Repository<T: CoreDataRepresentable>: AbstractRepository<T> where T 
         self.scheduler = ContextScheduler(context: context)
     }
 
-    override func query(with predicate: NSPredicate? = nil,
-                        sortDescriptors: [NSSortDescriptor]? = nil) -> Observable<[T]> {
+    func query(with predicate: NSPredicate? = nil,
+               sortDescriptors: [NSSortDescriptor]? = nil) -> Observable<[T]> {
         let request = T.CoreDataType.fetchRequest()
         request.predicate = predicate
         request.sortDescriptors = sortDescriptors
+        
         return context.rx.entities(fetchRequest: request)
             .mapToDomain()
             .subscribeOn(scheduler)
     }
 
-    override func save(entity: T) -> Observable<Void> {
+    func save(entity: T) -> Observable<Void> {
         return entity.sync(in: context)
             .mapToVoid()
             .flatMapLatest(context.rx.save)
             .subscribeOn(scheduler)
     }
-}
-```
 
-As you can see, concrete implementations are internal, because we don't want to expose our dependecies. The only thing that is exposed in the current example from the `Platform` is a concrete implementation of the `UseCaseProvider`.
-
-```swift
-public final class UseCaseProvider: Domain.UseCaseProvider {
-    private let coreDataStack = CoreDataStack()
-    private let postRepository: Repository<Post>
-
-    public init() {
-        postRepository = Repository<Post>(context: coreDataStack.context)
-    }
-
-    public func makePostsUseCase() -> Domain.PostsUseCase {
-        return PostsUseCase(repository: postRepository)
+    func delete(entity: T) -> Observable<Void> {
+        return entity.sync(in: context)
+            .map({$0 as! NSManagedObject})
+            .flatMapLatest(context.rx.delete)
     }
 }
 ```
@@ -179,17 +190,17 @@ final class PostsViewModel: ViewModelType {
     }
     struct Output {
         let fetching: Driver<Bool>
-        let posts: Driver<[Post]>
+        let posts: Driver<[PostItemViewModel]>
         let createPost: Driver<Void>
         let selectedPost: Driver<Post>
         let error: Driver<Error>
     }
-    
-    private let useCase: AllPostsUseCase
+
+    private let listPostsUseCase: ListPostsUseCase
     private let navigator: PostsNavigator
-    
-    init(useCase: AllPostsUseCase, navigator: PostsNavigator) {
-        self.useCase = useCase
+
+    init(listPostsUseCase: ListPostsUseCase, navigator: PostsNavigator) {
+        self.listPostsUseCase = listPostsUseCase
         self.navigator = navigator
     }
     
@@ -211,22 +222,29 @@ protocol PostsNavigator {
 class DefaultPostsNavigator: PostsNavigator {
     private let storyBoard: UIStoryboard
     private let navigationController: UINavigationController
-    private let services: ServiceLocator
-    
-    init(services: ServiceLocator,
+    private let savePostUseCase: SavePostUseCase
+    private let deletePostUseCase: DeletePostUseCase
+    private let listPostsUseCase: ListPostsUseCase
+
+    init(savePostUseCase: SavePostUseCase,
+         deletePostUseCase: DeletePostUseCase,
+         listPostsUseCase: ListPostsUseCase,
          navigationController: UINavigationController,
          storyBoard: UIStoryboard) {
-        self.services = services
+        self.savePostUseCase = savePostUseCase
+        self.deletePostUseCase = deletePostUseCase
+        self.listPostsUseCase = listPostsUseCase
         self.navigationController = navigationController
         self.storyBoard = storyBoard
     }
-    
+
     func toPosts() {
         let vc = storyBoard.instantiateViewController(ofType: PostsViewController.self)
-        vc.viewModel = PostsViewModel(useCase: services.getAllPostsUseCase(),
-                                      navigator: self)
+        vc.viewModel = PostsViewModel(listPostsUseCase: listPostsUseCase,
+        navigator: self)
         navigationController.pushViewController(vc, animated: true)
     }
+    
     ....
 }
 
